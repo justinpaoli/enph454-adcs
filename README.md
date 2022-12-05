@@ -1,11 +1,18 @@
-# ADCS - Current state of the subteam and it's various projects
-*NOTE:* please refer to the general `queens-satellite-team documentation` repo for datasheets and part specifications
+# ENPH454-ADCS
+This software is designed to run on ADCS hardware as described in the [csdc-4100-adcs-design](https://queensuca.sharepoint.com/:f:/r/teams/GROUP-QSET/Shared%20Documents/Satellite-General/csdc/4000-systems-design/csdc-4100-adcs-design?csf=1&web=1&e=ExKmLO) documents. It was developed for Queen's Space Engineering Team (QSET) as part of the requirements of ENPH 454 - Capstone Engineering Physics Design Project at Queen's University. 
 
-## archive
-Holds depricated code that is no longer in production
+The design team, consisting of:
+- Katherine Faulkner
+- Jonathan Fawcett
+- Cal Graham
+- Lily de Loë
+- Justin Paoli
+- Aidan Sheedy
 
-## csdc-6
-Contains all ADCS firmware, simulations, and other software used for the CSDC-6 revision of the ADCS.
+originally completed this work in the [QSET ADCS respository](https://github.com/queens-satellite-team/adcs). This fork holds a snapshot of the project as of December 2, 2022, when work on the project as part of ENPH 454 was completed.
 
-## python-boost-tutorial
-Has a tutorial describing how to use Boost to compile C++ libraries to be accessible in Python scripts.
+## adcs-simulation
+Holds the 2022-2023 version of the satellite physics simulation. There is one MATLAB Simulink version and one C++ version.
+
+## adcs-control-code
+Holds the high-level, hardware agnostic control code. This contains all control algorithms for the ADCS for each mode: pointing mode, fault modes, etc.
