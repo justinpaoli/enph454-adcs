@@ -6,12 +6,13 @@
  * @authors Lily de Loe, Justin Paoli, Aidan Sheedy
  *
  * Last Edited
- * 2022-12-01
+ * 2022-11-08
  *
 **/
 
 #include <chrono>
 #include <iostream>
+#include <random>
 
 #include "ConfigurationSingleton.hpp"
 #include "SensorActuatorFactory.hpp"
@@ -24,59 +25,40 @@ Simulator::Simulator(Messenger *messenger)
     {
         this->messenger = messenger;
     }
+
+    this->simulation_time = 0;
+    // TODO: should be configured in YAML
+    auto &config = Configuration::GetInstance();
+    timestamp t(config.GetTimestepInMilliSeconds(),0);
+    this->timestep_length = t;
+    this->last_called = -1;
+
+    this->rng = std::default_random_engine();
+    this->rng.seed(69); // TODO: remove this in favour of psuedorandom (done for testing)
 }
 
-void Simulator::init(sim_config initial_values, timestamp timeout, timestamp initial_timestep, bool variableTimestep, timestamp max_timestep, timestamp min_timestep)
+void Simulator::init(sim_config initial_values, timestamp timeout)
 {
     /* TODO may need a check here**/
     this->system_vals = initial_values;
-    this->timeout     = timeout;
-
-    this->simulation_time = 0;
-    this->timestep_length = initial_timestep;
-    this->last_called     = -1;
-
-    this->variableTimestep = variableTimestep;
-    this->max_timestep     = max_timestep;
-    this->min_timestamp    = min_timestep;
+    this->timeout = timeout;
 
     messenger->send_message("Starting simulation, timeout: " + this->timeout.pretty_string());
     messenger->start_new_sim(initial_values.reaction_wheels.size());
 }
 
 timestamp Simulator::update_simulation() {
-    timestamp time_passed = this->determine_time_passed();
-    this->simulate(time_passed);
+    //timestamp time_passed = this->determine_time_passed();
+    timestamp t(1, 0);
+    this->simulate(t);
 
     return this->simulation_time;
 }
 
-void Simulator::determine_timestep() 
-{
-    //2*max error is defined as 2*0.005 degrees = 0.01 degrees
-    if (true == this->variableTimestep)
-    {
-        // formula is: timestep = 2 * error / acceleration. Result is in seconds, *1000 to conver to ms
-        float calculated_timestep_in_ms = (2 * max_error_in_rad)/(this->system_vals.satellite.alpha_b.cwiseAbs().maxCoeff())*1000;
-        timestamp t(calculated_timestep_in_ms,0);
-
-        this->timestep_length = t;
-        if ((timestep_length > max_timestep))
-        {
-            this->timestep_length = max_timestep;
-        }
-        else if (timestep_length < min_timestamp)
-        {
-            this->timestep_length = min_timestamp;
-        }
-    }
-
-    return;
-}
-
 timestamp Simulator::set_adcs_sleep(timestamp duration) {
-    timestamp time_passed = this->determine_time_passed();
-    this->simulate(time_passed + duration);
+    //timestamp time_passed = this->determine_time_passed();
+    timestamp t(1, 0);
+    this->simulate(t + duration);
 
     return this->simulation_time;
 }
@@ -96,15 +78,14 @@ void Simulator::simulate(timestamp t) {
     timestamp end = this->simulation_time + t;
 
     while (this->simulation_time <= end) {
-        this->determine_timestep();
-        this->simulation_time = this->simulation_time + this->timestep_length;
+        this->simulation_time = this->simulation_time + this->timestep_length;        
         this->timestep();
-        this->messenger->update_simulation_state(this->system_vals, this->simulation_time, this->timestep_length);
+        this->messenger->update_simulation_state(this->system_vals, this->simulation_time);
         
         /* end simulation if the timeout is reached. */
         if (this->timeout < this->simulation_time)
         {
-            this->messenger->write_output_buffer();
+            this->messenger->close_open_csv();
             throw simulation_timeout("Timeout reached.");
         }
     }
@@ -184,9 +165,11 @@ gyro_state Simulator::gyroscope_take_measurement()
     this->update_simulation();
     gyro_state ret;
 
+    std::normal_distribution<double> distribution(0.0, 0.02); // mean = 0, stdev = 0.02 rad (~1 deg)
+
     ret.acceleration = this->system_vals.gyroscope.alpha;
     ret.velocity     = this->system_vals.gyroscope.omega;
-    ret.position     = this->system_vals.gyroscope.theta;
+    ret.position     = this->system_vals.gyroscope.theta + Eigen::Vector3f::Ones()*float(distribution(this->rng));
     ret.time_taken   = this->simulation_time;
 
     return ret;
